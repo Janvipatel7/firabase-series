@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react"
 import { db } from "./config/firebase";
-import { addDoc, collection, collectionGroup, getDocs } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
 
 const App = () => {
 
   const [input, setInput] = useState({
     name: '', author: '', isBn: ''
   })
-
   const [books, setBooks] = useState([])
+  const [editId, setEditId] = useState(null);
+
+  useEffect(() => {
+    fetchBook()
+  }, [])
 
   const addBook = async () => {
     const bookdata = await addDoc(collection(db, "books"), input)
     fetchBook()
-    setInput({ name: '', author: '', isBn: ''})
+    setInput({ name: '', author: '', isBn: '' })
   }
 
   const fetchBook = async () => {
@@ -27,9 +31,25 @@ const App = () => {
     setBooks(arr);
   };
 
-  useEffect(() => {
-    fetchBook()
-  }, [])
+  const deleteBook = async (id) => {
+    try {
+      await deleteDoc(doc(db, "books", id))
+      fetchBook();
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  const editedBook = async () => {
+    try {
+      await updateDoc(doc(db, "books", editId), input)
+      fetchBook();
+      setInput({ name: '', author: '', isBn: '' })
+    } catch (err) {
+      console.log(err)
+    }
+
+  }
 
   return (
     <div>
@@ -45,17 +65,40 @@ const App = () => {
 
         <br /><br />
 
-        <button onClick={addBook}>Add Book</button>
+        <button onClick={editId ? editedBook : addBook}>{editId ? "update" : "Add"} Book</button>
 
-        {
-          books.map((book) => {
-            return <div key={book.id}>
-              <h3>{book.name}</h3>
-              <p>{book.author}</p>
-              <p>{book.isBn}</p>
-            </div>
-          })
-        }
+        <table border="2" cellPadding={10} width={500}>
+          <thead>
+            <tr>
+              <th>No </th>
+              <th>Name</th>
+              <th>Author </th>
+              <th>ISBN </th>
+              <th>Action </th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              books.map((book, idx) => {
+                return <tr key={book.id}>
+                  <td>{idx + 1}</td>
+                  <td>{book.name}</td>
+                  <td>{book.author}</td>
+                  <td>{book.isBn}</td>
+                  <td>
+                    <button onClick={() => {
+                      setEditId(book.id);
+                      const { id, ...data } = book
+                      setInput(data)
+                      console.log(id, data)
+                    }}>edit</button>
+                    <button onClick={() => deleteBook(book.id)}>delete</button>
+                  </td>
+                </tr>
+              })
+            }
+          </tbody>
+        </table>
       </div>
     </div>
   )
